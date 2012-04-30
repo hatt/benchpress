@@ -1,1 +1,5 @@
 Benchpress is a WordPress installation and auditing tool focused on securing the application.
+
+To use, edit the $opts hash values to what is appropriate for your database and future blog.
+
+Currently, benchpress only does a basic install with a few tweaks to remove useless extras and enable some security features. These will get flags to enable or disable once I get around to adding GetOpts support. Planned features prior to breaking it into more useful modules are some adjustments to functions.php in the packaged theme, specify an install directory on the server, move wp-content and wp-includes, and nginx/apache htaccess and mod_rewrite support.
