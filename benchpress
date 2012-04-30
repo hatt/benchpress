@@ -1,0 +1,93 @@
+#!/usr/bin/env perl
+
+use common::sense;
+use utf8;
+
+use version 0.77; our $VERSION = "v0.1_0";
+
+use Archive::Tar;
+use File::chmod::Recursive;
+use Crypt::Random 'makerandom';
+use Digest::SHA qw(sha512_hex);
+use File::Path;
+use WWW::Mechanize;
+
+my $at = Archive::Tar->new;
+my $ua = WWW::Mechanize->new;
+
+# EDIT THIS BIT
+my $opts;
+$opts->{db}->{name} = "";
+$opts->{db}->{user} = "";
+$opts->{db}->{pass} = "";
+$opts->{db}->{host} = "";
+$opts->{url} = "";
+$opts->{title} = "";
+$opts->{username} = "";
+$opts->{email} = "";
+# STOP EDITING NAU
+
+# download and extract latest source
+my $res = $ua->get('http://wordpress.org/latest.tar.gz');
+$ua->save_content($res->filename);
+  
+$at->read($res->filename);
+$at->extract();
+unlink($res->filename);
+
+# remove useless extras
+remove_tree('wordpress/wp-content/themes/twentyten');
+unlink('wordpress/wp-content/plugins/hello.php');
+unlink('wordpress/readme.html');
+
+
+# configure
+open(WPCONFIG, '>>', 'wp-config.php');
+
+print WPCONFIG "<?php\n\n";
+print WPCONFIG "define('DB_NAME', '" . $opts->{db}->{name} . "');\n";
+print WPCONFIG "define('DB_USER', '" . $opts->{db}->{user} . "');\n";
+print WPCONFIG "define('DB_PASSWORD', '" . $opts->{db}->{pass} . "');\n";
+print WPCONFIG "define('DB_HOST', '" . $opts->{db}->{host} . "');\n";
+print WPCONFIG "define('DB_CHARSET', 'utf8');\n";
+print WPCONFIG "define('DB_COLLATE', '');\n\n";
+
+$ua->get('https://api.wordpress.org/secret-key/1.1/salt/');
+print WPCONFIG $ua->content . "\n";
+
+my $prefix = substr sha512_hex(makerandom(Size => 1024)), 42, 6;
+print WPCONFIG "\$table_prefix  = '" . $prefix . "_';\n\n";
+print WPCONFIG "define('FORCE_SSL_LOGIN', true);\n";
+print WPCONFIG "define('FORCE_SSL_ADMIN', true);\n";
+print WPCONFIG "if (\$_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')\n";
+print WPCONFIG "\t\$_SERVER['HTTPS']='on';\n";
+print WPCONFIG "define('WP_POST_REVISIONS', 3);\n";
+print WPCONFIG "define('WPLANG', '');\n";
+print WPCONFIG "define('WP_DEBUG', false);\n\n";
+print WPCONFIG "if ( !defined('ABSPATH') )\n";
+print WPCONFIG "\tdefine('ABSPATH', dirname(__FILE__) . '/');\n\n";
+print WPCONFIG "require_once(ABSPATH . 'wp-settings.php');\n";
+
+unlink('wordpress/wp-config-sample.php');
+close(WPCONFIG);
+
+
+# secure defaults
+my $admin_pass = substr sha512_hex(makerandom(Size => 1024)), 5, 9;
+
+# set permissions
+# 755 for directories, 644 for files, 400 for wp-config.php
+chmod_recursive({dirs => 0755, files => 0644}, 'wordpress');
+chmod 0400, 'wp-config.php';
+
+# run install
+$ua->get($opts->{url} . "/wp-admin/install.php");
+$ua->submit_form(with_fields => {
+  weblog_title => $opts->{title},
+  user_name => $opts->{username},
+  admin_password => $admin_pass,
+  admin_password2 => $admin_pass,
+  admin_email => $opts->{email},
+  blog_public => 1
+});
+print "You can now login to your blog at " . grep(s/http/https/, $opts->{url}) . " with username " . $opts->{username} . " and password " . $admin_pass . ".\n";
