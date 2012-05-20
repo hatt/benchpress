@@ -10,22 +10,27 @@ use File::chmod::Recursive;
 use Crypt::Random 'makerandom';
 use Digest::SHA qw(sha512_hex);
 use File::Path;
+use GetOpt::Long qw(:config bundling bundling_override);
 use WWW::Mechanize;
 
 my $at = Archive::Tar->new;
 my $ua = WWW::Mechanize->new;
 
-# EDIT THIS BIT
 my $opts;
-$opts->{db}->{name} = "";
-$opts->{db}->{user} = "";
-$opts->{db}->{pass} = "";
-$opts->{db}->{host} = "";
-$opts->{url} = "";
-$opts->{title} = "";
-$opts->{username} = "";
-$opts->{email} = "";
-# STOP EDITING NAU
+GetOptions('v|verbose'    => \$opts->{verbose},
+			     'u|db-user=s'  => \$opts->{db}->{user},
+           'n|db-name=s'  => \$opts->{db}->{name},
+           'p|db-pass=s'  => \$opts->{db}->{pass},
+           'db-host:s'    => \$opts->{db}->{host},
+           'url=s'        => \$opts->{url},
+           'email=s'      => \$opts->{email},
+           't|title'      => \$opts->{title},
+           'a|username'   => \$opts->{username}
+);
+
+$opts->{db}->{host} = 'localhost' unless defined($opts->{db}->{host});
+$opts->{title} = 'My Benchpressed Blag' unless defined($opts->{title});
+$opts->{username} = 'admin' unless defined($opts->{username});
 
 # download and extract latest source
 my $res = $ua->get('http://wordpress.org/latest.tar.gz');
