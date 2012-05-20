@@ -24,11 +24,12 @@ GetOptions('v|verbose'    => \$opts->{verbose},
            'db-host:s'    => \$opts->{db}->{host},
            'url=s'        => \$opts->{url},
            'email=s'      => \$opts->{email},
-           't|title'      => \$opts->{title},
-           'a|username'   => \$opts->{username},
+           't|title:s'      => \$opts->{title},
+           'a|username:s'   => \$opts->{username},
            'public'       => \$opts->{public}
 );
 
+# set defaults for optional flags
 $opts->{db}->{host} = 'localhost' unless defined($opts->{db}->{host});
 $opts->{title} = 'My Benchpressed Blag' unless defined($opts->{title});
 $opts->{username} = 'admin' unless defined($opts->{username});
