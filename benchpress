@@ -27,7 +27,8 @@ GetOptions('v|verbose'    => \$opts->{verbose},
            't|title:s'    => \$opts->{title},
            'a|username:s' => \$opts->{username},
            'public'       => \$opts->{public},
-           'ssl|secure'   => \$opts->{secure}
+           'ssl|secure'   => \$opts->{secure},
+           'o|d|dest:s'   => \$opts->{dest}
 );
 
 # set defaults for optional flags
@@ -90,6 +91,16 @@ my $admin_pass = substr sha512_hex(makerandom(Size => 1024)), 5, 9;
 chmod_recursive({dirs => 0755, files => 0644}, 'wordpress');
 chmod 0400, 'wp-config.php';
 
+# rename directory or otherwise move to destination
+if (defined $opts->{dest}) {
+  stat($opts->{dest});
+  if (! -d $opts->{dest}) {
+    move("wordpress", "$opts->{dest}");
+  } else {
+   warn "Destination exists and is not empty!\nInstalling to \"wordpress/\". You may move it when installation is complete.";
+  }
+}
+
 # run install
 my $opts->{url} = $opts->{secure} ? 'https://' . $opts->{url} : 'http://' . $opts->{url};
 $ua->get($opts->{url} . "/wp-admin/install.php");
@@ -101,4 +112,4 @@ $ua->submit_form(with_fields => {
   admin_email => $opts->{email},
   blog_public => $opts->{public}
 });
-print "You can now login to your blog at " . $opts->{url}) . " with username " . $opts->{username} . " and password " . $admin_pass . ".\n";
+print "You can now login to your blog at " . $opts->{url} . " with username " . $opts->{username} . " and password " . $admin_pass . ".\n";
