@@ -24,9 +24,10 @@ GetOptions('v|verbose'    => \$opts->{verbose},
            'db-host:s'    => \$opts->{db}->{host},
            'url=s'        => \$opts->{url},
            'email=s'      => \$opts->{email},
-           't|title:s'      => \$opts->{title},
-           'a|username:s'   => \$opts->{username},
-           'public'       => \$opts->{public}
+           't|title:s'    => \$opts->{title},
+           'a|username:s' => \$opts->{username},
+           'public'       => \$opts->{public},
+           'ssl|secure'   => \$opts->{secure}
 );
 
 # set defaults for optional flags
@@ -64,10 +65,12 @@ print WPCONFIG $ua->content . "\n";
 
 my $prefix = substr sha512_hex(makerandom(Size => 1024)), 42, 6;
 print WPCONFIG "\$table_prefix  = '" . $prefix . "_';\n\n";
-print WPCONFIG "define('FORCE_SSL_LOGIN', true);\n";
-print WPCONFIG "define('FORCE_SSL_ADMIN', true);\n";
-print WPCONFIG "if (\$_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')\n";
-print WPCONFIG "\t\$_SERVER['HTTPS']='on';\n";
+if ($opts->{secure}) {
+  print WPCONFIG "define('FORCE_SSL_LOGIN', true);\n";
+  print WPCONFIG "define('FORCE_SSL_ADMIN', true);\n";
+  print WPCONFIG "if (\$_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')\n";
+  print WPCONFIG "\t\$_SERVER['HTTPS']='on';\n";
+}
 print WPCONFIG "define('WP_POST_REVISIONS', 3);\n";
 print WPCONFIG "define('WPLANG', '');\n";
 print WPCONFIG "define('WP_DEBUG', false);\n\n";
@@ -88,6 +91,7 @@ chmod_recursive({dirs => 0755, files => 0644}, 'wordpress');
 chmod 0400, 'wp-config.php';
 
 # run install
+my $opts->{url} = $opts->{secure} ? 'https://' . $opts->{url} : 'http://' . $opts->{url};
 $ua->get($opts->{url} . "/wp-admin/install.php");
 $ua->submit_form(with_fields => {
   weblog_title => $opts->{title},
@@ -97,4 +101,4 @@ $ua->submit_form(with_fields => {
   admin_email => $opts->{email},
   blog_public => $opts->{public}
 });
-print "You can now login to your blog at " . grep(s/http/https/, $opts->{url}) . " with username " . $opts->{username} . " and password " . $admin_pass . ".\n";
+print "You can now login to your blog at " . $opts->{url}) . " with username " . $opts->{username} . " and password " . $admin_pass . ".\n";
